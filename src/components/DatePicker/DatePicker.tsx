@@ -1,6 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 
 import styles from './DatePicker.styles.module.css'
+import { 
+  DateCellItem, 
+  daysOfTheWeek, 
+  getCurrentMonthDays, 
+  getDaysAmountInAMonth, 
+  getNextMonthDays, 
+  getPreviousMonthDays, 
+  months
+} from '../utils/UtillsOfDatePicker'
 
 interface DatePickerProps{
   value: Date
@@ -9,107 +18,79 @@ interface DatePickerProps{
   max?: Date
 }
 
-
-const months:string[] = ['Jan', 'Fab', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-const daysOfTheWeek: string[] = ['Mon', 'Tue', 'Wen', 'Thu', 'Fri', 'Sat', 'Sun']
-
-interface DateCellItem{
-  date: number 
-  month: number
-  year: number
-}
-
-const getDaysAmountInAMonth = (year: number, month: number) => {
-  const nextMonthDate = new Date(year, month + 1, 1)
-  nextMonthDate.setMinutes(-1)
-  const lastMonthDate = nextMonthDate.getDate()
-
-  return lastMonthDate
-}
-
-const sundayWeekToMondayWeekDayToMap: Record<number, number> = {
-  0:6,
-  1:0,
-  2:1,
-  3:2,
-  4:3,
-  5:4,
-  6:5,
-}
-
-const getDayOfTheWeek = (date: Date) => {
-  const day = date.getDay()
-
-  return sundayWeekToMondayWeekDayToMap[day]
-}
-
-const getPreviousMonthDays = (year: number, month: number) => {
-  const currentMonthFirstDay = new Date(year, month, 1)
-  const prevMonthCellsAmount = getDayOfTheWeek(currentMonthFirstDay)
-
-  const daysAmountInPrevMonth = getDaysAmountInAMonth(year, month - 1)
-
-  const dateCells: DateCellItem[] = []
-  console.log(month);
-  
-
-  const [cellYear, cellMonth] = 
-    month === 0 ? [year - 1, 11] : [year, month - 1]
-
-  for (let i = 0; i < prevMonthCellsAmount; i++) {
-    dateCells.unshift({
-      year: cellYear,
-      month: cellMonth,
-      date: daysAmountInPrevMonth - i
-    })
-  }
-  return dateCells
-}
-
-const VISIBLE_CELLS_AMOUNT = 7 * 6
-
-const getNextMonthDays = (year: number, month: number) => {
-  //TODO copy paste
-  const currentMonthFirstDay = new Date(year, month, 1)
-  const prevMonthCellsAmount = getDayOfTheWeek(currentMonthFirstDay)
-  //TODO end copy paste
-
-  const daysAmount = getDaysAmountInAMonth(year, month)
-
-  const [cellYear, cellMonth] = 
-    month === 11 ? [year + 1, 0] : [year, month + 1]
-
-  const dateCells: DateCellItem[] = []
-
-  const nextMonthDays = 
-    VISIBLE_CELLS_AMOUNT - daysAmount - prevMonthCellsAmount 
-
-  for (let i = 1; i <= nextMonthDays; i++) {
-    dateCells.push({
-      year: cellYear,
-      month: cellMonth,
-      date: i
-    })
-  }
-  return dateCells
-}
-
-const getCurrentMonthDays = (year: number, month: number, numberOfDays: number) => {
-  const dateCells: DateCellItem[] = []
-
-  for (let i = 1; i <= numberOfDays; i++) {
-    dateCells.push({
-      year,
-      month,
-      date: i
-    })
-  }
-
-  return dateCells  
+const getInputValueFromDate = (value: Date) => {
+  const dateValue = value.getDate()
+  const date = dateValue > 9 ? dateValue : `0${dateValue}`
+  const monthValue = value.getMonth()
+  const month = monthValue > 9 ? monthValue : `0${monthValue}`
+  const year = value.getFullYear()
+  return `${date}-${month}-${year}`
 }
 
 export const DatePicker = ({value, onChange, min, max}: DatePickerProps) => {
+
+  const [showPopup, setShowPopup] = useState(false)
+  const datePickerElRef = useRef<HTMLDivElement>(null)
+
+  const [inputValue, setInputValue] = useState('')
+  //TODO do we need effect
+  useLayoutEffect(() => { 
+    setInputValue(getInputValueFromDate(value))
+  }, [value])
+
+  useEffect(() => {
+    const element = datePickerElRef.current
+
+    if(!element) return
+
+    const onDocumentClick = (e: MouseEvent) => {
+      const target = e.target
+
+      if(!(target instanceof Node)) return
+
+      if(element.contains(target)) return
+
+      setShowPopup(false)
+    }
+
+    document.addEventListener('click', onDocumentClick)
+
+    return () => {
+      document.addEventListener('click', onDocumentClick)
+    }
+  }, [])
+
+  const onInputValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    const [] = useMemo(() => {
+
+    }, [])
+    setInputValue(value)
+  }
+
+  const onFocus = () => {
+    setShowPopup(true)
+  }
+
+  const onBlur = () => {
+
+  }
+
+
+
+  return (
+    <div ref={datePickerElRef} className={styles.popupWrapper}>
+      <input value={inputValue} type="text" onFocus={onFocus} placeholder='DD-MM_YY' />
+      {showPopup && (
+        <div className={styles.contentWrapper}>
+          <DatePickerPopupContent value={value} onChange={onChange} min={min} max={max}/>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export const DatePickerPopupContent = ({value, onChange}: DatePickerProps) => {
 
   const [panelYear, setPanelYear] = useState(() => value.getFullYear())
   const [panelMonth, setPanelMonth] = useState(() => value.getMonth())

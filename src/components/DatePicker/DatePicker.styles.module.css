@@ -18,3 +18,15 @@
 .selectedDate{
   background-color: lightblue;
 }
+
+.popupWrapper{
+  position: relative;
+  display: inline-block;
+}
+
+.contentWrapper{
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+}
